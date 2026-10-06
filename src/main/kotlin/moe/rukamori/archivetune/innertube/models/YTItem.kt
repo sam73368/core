@@ -9,7 +9,6 @@ package moe.rukamori.archivetune.innertube.models
 
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_OMV
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_UGC
-import java.util.Locale
 
 sealed class YTItem {
     abstract val id: String
@@ -39,7 +38,7 @@ enum class AlbumReleaseType {
 
     companion object {
         fun fromLabel(label: String?): AlbumReleaseType =
-            when (label?.trim()?.lowercase(Locale.ROOT)) {
+            when (label?.trim()?.lowercase()) {
                 "single", "singles" -> SINGLE
                 "ep", "eps" -> EP
                 else -> ALBUM

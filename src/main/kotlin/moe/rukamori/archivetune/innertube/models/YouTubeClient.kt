@@ -8,7 +8,6 @@
 package moe.rukamori.archivetune.innertube.models
 
 import kotlinx.serialization.Serializable
-import java.util.Locale
 
 @Serializable
 data class YouTubeClient(
@@ -68,13 +67,13 @@ data class YouTubeClient(
     )
 
     fun requestOrigin(): String =
-        when (clientName.uppercase(Locale.US)) {
+        when (clientName.uppercase()) {
             "TVHTML5", "TVHTML5_SIMPLY_EMBEDDED_PLAYER", "TVHTML5_SIMPLY" -> ORIGIN_YOUTUBE
             else -> ORIGIN_YOUTUBE_MUSIC
         }
 
     fun requestReferer(): String =
-        when (clientName.uppercase(Locale.US)) {
+        when (clientName.uppercase()) {
             "TVHTML5", "TVHTML5_SIMPLY_EMBEDDED_PLAYER", "TVHTML5_SIMPLY" -> REFERER_YOUTUBE_TV
             else -> REFERER_YOUTUBE_MUSIC
         }
