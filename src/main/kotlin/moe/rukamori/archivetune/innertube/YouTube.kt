@@ -637,22 +637,23 @@ object YouTube {
                     thumbnailHeight = albumThumbnail.height,
                     explicit = false, // TODO: Extract explicit badge for albums from YouTube response
                 )
-            val inlineSongs = if (withSongs) AlbumPage.getSongs(response, albumItem) else emptyList()
+            val inlineSongs = if (withSongs) AlbumPage.getAllSongs(response, albumItem) else emptyList()
             val songs =
                 if (withSongs) {
                     val fetchedSongs =
-                        runCatching {
-                            albumSongs(playlistId, albumItem).getOrThrow()
-                        }.getOrElse { error ->
+                        albumSongs(playlistId, albumItem).getOrElse { error ->
                             if (inlineSongs.isNotEmpty()) {
-                                inlineSongs
+                                emptyList()
                             } else {
                                 throw error
                             }
                         }
-
-                    if (fetchedSongs.isEmpty() && inlineSongs.isNotEmpty()) {
-                        inlineSongs
+                    // The album's playlist can come back shorter than the album page itself
+                    // (partial pages, regional gaps), so never let a shorter list win: use the
+                    // more complete one, keeping the richer playlist metadata when ids match.
+                    if (inlineSongs.size > fetchedSongs.size) {
+                        val fetchedById = fetchedSongs.associateBy { it.id }
+                        inlineSongs.map { fetchedById[it.id] ?: it }
                     } else {
                         fetchedSongs
                     }
@@ -722,22 +723,34 @@ object YouTube {
                 seenContinuations.add(continuation)
                 requestCount++
 
+                // A failed or unparseable continuation page must not throw away the songs
+                // already collected: stop paging and return what we have.
                 response =
-                    innerTube
-                        .browse(
-                            client = WEB_REMIX,
-                            continuation = continuation,
-                        ).body<BrowseResponse>()
+                    runCatching {
+                        innerTube
+                            .browse(
+                                client = WEB_REMIX,
+                                continuation = continuation,
+                            ).body<BrowseResponse>()
+                    }.getOrElse { error ->
+                        if (error is kotlinx.coroutines.CancellationException || songs.isEmpty()) throw error
+                        null
+                    } ?: break
 
                 val newSongCandidates = AlbumPage.getContinuationSongRenderers(response)
                 val newSongs = AlbumPage.getContinuationSongs(response, album)
                 val hasNewSongs =
                     if (newSongCandidates.isNotEmpty() || newSongs.isNotEmpty()) {
-                        appendSongs(
-                            candidates = newSongCandidates,
-                            parsedSongs = newSongs,
-                            source = "continuation response",
-                        )
+                        runCatching {
+                            appendSongs(
+                                candidates = newSongCandidates,
+                                parsedSongs = newSongs,
+                                source = "continuation response",
+                            )
+                        }.getOrElse { error ->
+                            if (songs.isEmpty()) throw error
+                            null
+                        } ?: break
                     } else {
                         false
                     }
