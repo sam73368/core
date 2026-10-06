@@ -1,5 +1,7 @@
 package moe.rukamori.archivetune.innertube
 
+import kotlin.jvm.JvmInline
+
 @JvmInline
 value class SearchFilter(
     val value: String,
