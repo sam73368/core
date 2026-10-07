@@ -18,6 +18,9 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
@@ -45,9 +48,25 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  */
 @OptIn(ExperimentalEncodingApi::class)
 class InnerTube {
+    @Volatile
     private var httpClient = createClient()
 
+    /**
+     * Swaps in a client built with the current settings. The previous one is closed only after a
+     * grace period so requests already in flight (first Home load at launch, which sets several
+     * proxy/DNS properties back to back) are not cancelled mid-request.
+     */
+    private fun rebuildClient() {
+        val previous = httpClient
+        httpClient = createClient()
+        CoroutineScope(Dispatchers.IO).launch {
+            delay(CLIENT_CLOSE_GRACE_MS)
+            runCatching { previous.close() }
+        }
+    }
+
     private companion object {
+        const val CLIENT_CLOSE_GRACE_MS = 30_000L
         const val HTTP_HEADER_ACCEPT_LANGUAGE = "Accept-Language"
         const val HTTP_HEADER_CACHE_CONTROL = "Cache-Control"
         const val PLAYBACK_TELEMETRY_VER = "2"
@@ -88,30 +107,30 @@ class InnerTube {
 
     var proxy: Proxy? = null
         set(value) {
+            if (field == value) return
             field = value
-            httpClient.close()
-            httpClient = createClient()
+            rebuildClient()
         }
 
     var proxyUsername: String? = null
         set(value) {
+            if (field == value) return
             field = value
-            httpClient.close()
-            httpClient = createClient()
+            rebuildClient()
         }
 
     var proxyPassword: String? = null
         set(value) {
+            if (field == value) return
             field = value
-            httpClient.close()
-            httpClient = createClient()
+            rebuildClient()
         }
 
     var dns: Dns = Dns.SYSTEM
         set(value) {
+            if (field == value) return
             field = value
-            httpClient.close()
-            httpClient = createClient()
+            rebuildClient()
         }
 
     /**
@@ -121,9 +140,9 @@ class InnerTube {
      */
     internal var proxySelector: RotatingProxySelector? = null
         set(value) {
+            if (field == value) return
             field = value
-            httpClient.close()
-            httpClient = createClient()
+            rebuildClient()
         }
 
     var useLoginForBrowse: Boolean = false
