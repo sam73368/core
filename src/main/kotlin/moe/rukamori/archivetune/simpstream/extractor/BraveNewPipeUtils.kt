@@ -40,10 +40,24 @@ private val streamHealthCheckClient: OkHttpClient by lazy {
  * only when the response code is in the 200..299 range. We only health-check those URLs because
  * they are the ones the player will actually use; lower-quality extras can stay unverified.
  */
-internal fun List<Pair<Int, String>>.headCheckRandomStream(): Boolean {
+internal fun List<Pair<Int, String>>.headCheckRandomStream(): Boolean = headCheckRandomStreamResult() == StreamHeadCheck.OK
+
+/** Outcome of a stream health check. Only [REJECTED] says anything about the cipher / signature. */
+internal enum class StreamHeadCheck {
+    /** 2xx: the URL is playable. */
+    OK,
+
+    /** 4xx: the server refused the URL (stale signature, expired, wrong client). */
+    REJECTED,
+
+    /** Network error, timeout or 5xx: we learned nothing about the URL itself. */
+    UNKNOWN,
+}
+
+internal fun List<Pair<Int, String>>.headCheckRandomStreamResult(): StreamHeadCheck {
     val required = ITAG.AUDIO + ITAG.VIDEO
-    val candidate = this.filter { it.first in required }.randomOrNull() ?: return false
-    return runCatching {
+    val candidate = this.filter { it.first in required }.randomOrNull() ?: return StreamHeadCheck.REJECTED
+    return try {
         val request =
             okhttp3.Request
                 .Builder()
@@ -51,9 +65,17 @@ internal fun List<Pair<Int, String>>.headCheckRandomStream(): Boolean {
                 .url(candidate.second)
                 .build()
         streamHealthCheckClient.newCall(request).execute().use { response ->
-            response.code in 200..299
+            when (response.code) {
+                in 200..299 -> StreamHeadCheck.OK
+                in 400..499 -> StreamHeadCheck.REJECTED
+                else -> StreamHeadCheck.UNKNOWN
+            }
         }
-    }.getOrDefault(false)
+    } catch (e: IOException) {
+        StreamHeadCheck.UNKNOWN
+    } catch (e: IllegalArgumentException) {
+        StreamHeadCheck.REJECTED
+    }
 }
 
 class BraveNewPipeDownloaderImpl(

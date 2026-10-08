@@ -98,12 +98,15 @@ class SimpMusicExtractor {
                 SimpStreamLog.d(TAG, "PipePipe[$tier] missing required itags for $videoId (got=${pipeResult.map { it.first }})")
                 return null
             }
-            if (!pipeResult.headCheckRandomStream()) {
-                SimpStreamLog.d(TAG, "PipePipe[$tier] stream URL HEAD check failed (non 2xx) for $videoId")
-                // A rejected URL is the one symptom of a stale player table: the signature is
+            val headCheck = pipeResult.headCheckRandomStreamResult()
+            if (headCheck != StreamHeadCheck.OK) {
+                SimpStreamLog.d(TAG, "PipePipe[$tier] stream URL HEAD check $headCheck for $videoId")
+                // A rejected (4xx) URL is the one symptom of a stale player table: the signature is
                 // well-formed and still wrong, so nothing threw on the way here. Only the on-device
-                // table can go stale, so only that tier is worth invalidating.
-                if (tier == LOCAL_TIER) faradayDecoder.invalidate()
+                // table can go stale, so only that tier is worth invalidating. A network error or a
+                // 5xx says nothing about the cipher; invalidating then would throw away the solver
+                // and re-download base.js (MBs) on every flaky-network track.
+                if (tier == LOCAL_TIER && headCheck == StreamHeadCheck.REJECTED) faradayDecoder.invalidate()
                 return null
             }
             val label = if (tier == LOCAL_TIER) faradayDecoder.lastOutcomeLabel else REMOTE_TIER

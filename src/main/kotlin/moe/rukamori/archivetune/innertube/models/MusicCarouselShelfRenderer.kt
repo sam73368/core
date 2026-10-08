@@ -12,8 +12,8 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class MusicCarouselShelfRenderer(
     val header: Header?,
-    val contents: List<Content>,
-    val itemSize: String,
+    val contents: List<Content> = emptyList(),
+    val itemSize: String? = null,
     val numItemsPerColumn: Int?,
 ) {
     @Serializable

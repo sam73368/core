@@ -28,6 +28,7 @@ import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.request.head
 import moe.rukamori.archivetune.innertube.PlaybackAuthState
 import moe.rukamori.archivetune.innertube.YouTube
+import moe.rukamori.archivetune.innertube.runCatchingCancellable
 import moe.rukamori.archivetune.innertube.models.YouTubeClient.Companion.WEB_REMIX
 import moe.rukamori.archivetune.innertube.models.response.PlayerResponse
 import moe.rukamori.archivetune.simpstream.extractor.ExtractSource
@@ -81,6 +82,8 @@ object SimpMusicPlayer {
     suspend fun is403Url(url: String): Boolean =
         try {
             headCheckClient.head(url).status.value in 400..499
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+            throw e
         } catch (e: Exception) {
             SimpStreamLog.w(TAG, "is403Url HEAD check failed", e)
             true
@@ -93,7 +96,7 @@ object SimpMusicPlayer {
         playlistId: String? = null,
         authState: PlaybackAuthState = YouTube.currentPlaybackAuthState(),
     ): Result<Triple<String?, PlayerResponse, MediaType>> =
-        runCatching {
+        runCatchingCancellable {
             ensureInitialized()
             // SimpMusic passes the account cookie to the extractors so they can
             // see age-gated / members-only videos; anonymous users pass "".
@@ -134,7 +137,7 @@ object SimpMusicPlayer {
                     }
                 val extractedStreams =
                     async(Dispatchers.IO) {
-                        runCatching { extractor.newPipePlayer(videoId) }.getOrElse { emptyList() }
+                        runCatchingCancellable { extractor.newPipePlayer(videoId) }.getOrElse { emptyList() }
                     }
 
                 val tempRes = playerRequest.await()
@@ -154,7 +157,7 @@ object SimpMusicPlayer {
                     ?.firstOrNull()
             val thumbnails =
                 if (firstThumb?.height == firstThumb?.width && firstThumb != null) MediaType.Song else MediaType.Video
-            return@runCatching Triple(
+            return@runCatchingCancellable Triple(
                 cpn,
                 decodedSigResponse.copy(
                     videoDetails = decodedSigResponse.videoDetails?.copy(),

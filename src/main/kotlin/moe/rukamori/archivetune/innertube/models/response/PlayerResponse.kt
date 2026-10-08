@@ -46,7 +46,7 @@ data class PlayerResponse(
     @Serializable
     data class StreamingData(
         val formats: List<Format>?,
-        val adaptiveFormats: List<Format>,
+        val adaptiveFormats: List<Format> = emptyList(),
         val expiresInSeconds: Int? = null,
         // HLS manifest URL (itag 96) — set from the NewPipe extraction when the
         // SimpMusic stream resolution merges extractor URLs into the response.

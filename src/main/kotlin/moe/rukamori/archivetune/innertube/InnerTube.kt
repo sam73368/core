@@ -960,6 +960,12 @@ class InnerTube {
             returnYouTubeDislike(videoId).body<ReturnYouTubeDislikeResponse>().likes
         }
 
+    /** View count only (Return YouTube Dislike); avoids the full /next request of [getMediaInfo]. */
+    suspend fun getViewCount(videoId: String): Result<Int?> =
+        runCatching {
+            returnYouTubeDislike(videoId).body<ReturnYouTubeDislikeResponse>().viewCount
+        }
+
     suspend fun getMediaInfo(videoId: String): Result<MediaInfo> =
         runCatching {
             val response = next(client = YouTubeClient.WEB, videoId, null, null, null, null, null).body<NextResponse>()
@@ -982,8 +988,15 @@ class InnerTube {
                         it?.videoPrimaryInfoRenderer != null
                     }?.videoPrimaryInfoRenderer
 
+            // RYD is optional garnish: a 404/429 there must not fail the whole media info.
             val returnYouTubeDislikeResponse =
-                returnYouTubeDislike(videoId).body<ReturnYouTubeDislikeResponse>()
+                try {
+                    returnYouTubeDislike(videoId).body<ReturnYouTubeDislikeResponse>()
+                } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    null
+                }
 
             // YouTube's own song credits: the structured-description panel's
             // music attribution cards each carry a "Song credits" dialog
@@ -1063,9 +1076,9 @@ class InnerTube {
                         ?.split(" ")
                         ?.firstOrNull(),
                 uploadDate = baseForTitle?.dateText?.simpleText,
-                viewCount = returnYouTubeDislikeResponse.viewCount,
-                like = returnYouTubeDislikeResponse.likes,
-                dislike = returnYouTubeDislikeResponse.dislikes,
+                viewCount = returnYouTubeDislikeResponse?.viewCount,
+                like = returnYouTubeDislikeResponse?.likes,
+                dislike = returnYouTubeDislikeResponse?.dislikes,
                 credits = credits,
             )
         }
