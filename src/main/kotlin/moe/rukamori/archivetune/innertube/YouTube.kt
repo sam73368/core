@@ -1240,7 +1240,7 @@ object YouTube {
                         HomePage.Section.fromMusicCarouselShelfRenderer(it)
                     }.toMutableList()
             val chips =
-                sectionListRender.header
+                sectionListRender?.header
                     ?.chipCloudRenderer
                     ?.chips
                     ?.mapNotNull { HomePage.Chip.fromChipCloudChipRenderer(it) }
