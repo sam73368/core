@@ -28,6 +28,7 @@ import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.request.head
 import moe.rukamori.archivetune.innertube.PlaybackAuthState
 import moe.rukamori.archivetune.innertube.YouTube
+import moe.rukamori.archivetune.innertube.runCatchingCancellable
 import moe.rukamori.archivetune.innertube.models.YouTubeClient.Companion.WEB_REMIX
 import moe.rukamori.archivetune.innertube.models.response.PlayerResponse
 import moe.rukamori.archivetune.simpstream.extractor.ExtractSource
@@ -84,6 +85,8 @@ object SimpMusicPlayer {
     suspend fun is403Url(url: String): Boolean =
         try {
             headCheckClient.head(url).status.value in 400..499
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+            throw e
         } catch (e: Exception) {
             SimpStreamLog.w(TAG, "is403Url HEAD check failed", e)
             true
@@ -138,7 +141,7 @@ object SimpMusicPlayer {
                     }
                 val extractedStreams =
                     async(Dispatchers.IO) {
-                        runCatching { extractor.newPipePlayer(videoId) }.getOrElse { emptyList() }
+                        runCatchingCancellable { extractor.newPipePlayer(videoId) }.getOrElse { emptyList() }
                     }
 
                 val tempRes = playerRequest.await()

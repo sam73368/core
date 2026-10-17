@@ -231,14 +231,9 @@ data class LibraryPage(
 
             if (runs != null) {
                 for (run in runs) {
-                    if (run.navigationEndpoint != null) {
-                        artists.add(
-                            Artist(
-                                id = run.navigationEndpoint.browseEndpoint?.browseId!!,
-                                name = run.text,
-                            ),
-                        )
-                    }
+                    // Not every run is a link to an artist (watch / url endpoints carry no browseId).
+                    val browseId = run.navigationEndpoint?.browseEndpoint?.browseId ?: continue
+                    artists.add(Artist(id = browseId, name = run.text))
                 }
             }
             return artists

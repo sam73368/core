@@ -178,6 +178,42 @@ data class AlbumPage(
             album: AlbumItem? = null,
         ): List<SongItem> = getSongRenderers(response).mapNotNull { getSong(it, album) }
 
+        /**
+         * Track rows from every track shelf on an album page. Multi-disc albums render one
+         * shelf per disc, so [getSongRenderers] (first shelf only) would miss later discs.
+         */
+        fun getAllSongRenderers(response: BrowseResponse): List<MusicResponsiveListItemRenderer> {
+            val renderers = mutableListOf<MusicResponsiveListItemRenderer>()
+            for (section in getSectionContents(response)) {
+                section.musicShelfRenderer
+                    ?.contents
+                    ?.getItems()
+                    ?.takeIf(::hasTrackCandidates)
+                    ?.let(renderers::addAll)
+                section.musicPlaylistShelfRenderer
+                    ?.contents
+                    ?.getItems()
+                    ?.takeIf(::hasTrackCandidates)
+                    ?.let(renderers::addAll)
+                section.itemSectionRenderer?.contents?.forEach { content ->
+                    content.musicShelfRenderer
+                        ?.contents
+                        ?.getItems()
+                        ?.takeIf(::hasTrackCandidates)
+                        ?.let(renderers::addAll)
+                }
+            }
+            return renderers
+        }
+
+        fun getAllSongs(
+            response: BrowseResponse,
+            album: AlbumItem? = null,
+        ): List<SongItem> =
+            getAllSongRenderers(response)
+                .mapNotNull { getSong(it, album) }
+                .distinctBy { it.id }
+
         fun getSongContinuation(response: BrowseResponse): String? {
             for (section in getSectionContents(response)) {
                 section.musicShelfRenderer?.let { shelf ->

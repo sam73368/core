@@ -118,7 +118,7 @@ object NewPipeUtils {
      */
     fun ensureInitialized() = Unit
 
-    suspend fun getSignatureTimestamp(videoId: String): Result<Int> = runCatching {
+    suspend fun getSignatureTimestamp(videoId: String): Result<Int> = runCatchingCancellable {
         withJavaScriptPlayerCacheRecovery {
             YoutubeJavaScriptPlayerManager.getSignatureTimestamp(videoId)
         }
