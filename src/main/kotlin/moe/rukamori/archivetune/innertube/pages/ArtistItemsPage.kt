@@ -9,6 +9,7 @@ package moe.rukamori.archivetune.innertube.pages
 
 import moe.rukamori.archivetune.innertube.models.Album
 import moe.rukamori.archivetune.innertube.models.AlbumItem
+import moe.rukamori.archivetune.innertube.models.AlbumReleaseType
 import moe.rukamori.archivetune.innertube.models.Artist
 import moe.rukamori.archivetune.innertube.models.MusicResponsiveListItemRenderer
 import moe.rukamori.archivetune.innertube.models.MusicTwoRowItemRenderer
@@ -112,6 +113,14 @@ data class ArtistItemsPage(
                         thumbnail = thumbnail.normalizedUrl,
                         thumbnailWidth = thumbnail.width,
                         thumbnailHeight = thumbnail.height,
+                        releaseType =
+                            renderer.subtitle
+                                ?.runs
+                                ?.takeIf { it.size > 1 }
+                                ?.firstOrNull()
+                                ?.text
+                                ?.let { AlbumReleaseType.fromLabel(it) }
+                                ?: AlbumReleaseType.ALBUM,
                         explicit =
                             renderer.subtitleBadges?.find {
                                 it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
